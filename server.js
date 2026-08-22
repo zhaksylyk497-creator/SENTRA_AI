@@ -4,7 +4,8 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: "2mb" }));
+// Увеличиваем лимит, потому что изображение передаётся в Base64
+app.use(express.json({ limit: "30mb" }));
 
 // Раздаём сайт
 app.use(express.static(process.cwd()));
@@ -19,7 +20,8 @@ app.get("/health", (req, res) => {
     res.json({
         status: "online",
         name: "SENTRA_AI",
-        ai: "Groq"
+        ai: "Groq",
+        vision: "Qwen 3.6 27B"
     });
 });
 
@@ -30,14 +32,16 @@ app.get("/health", (req, res) => {
 app.post("/api/chat", async (req, res) => {
     try {
         const {
-            message,
+            message = "",
             context = [],
-            memoryContext = ""
+            memoryContext = "",
+            imageData = null
         } = req.body;
 
-        if (!message || !message.trim()) {
+        // Должно быть либо сообщение, либо изображение
+        if ((!message || !message.trim()) && !imageData) {
             return res.status(400).json({
-                error: "Сообщение пустое"
+                error: "Сообщение или изображение отсутствует"
             });
         }
 
@@ -57,12 +61,22 @@ app.post("/api/chat", async (req, res) => {
 Не выдумывай факты.
 Учитывай контекст текущего разговора.
 
+Если пользователь отправил изображение:
+- внимательно проанализируй его;
+- отвечай именно на вопрос пользователя об изображении;
+- если вопрос не задан, кратко опиши, что находится на изображении;
+- если на изображении есть текст, можешь его прочитать;
+- не утверждай то, чего невозможно уверенно определить.
+
 Ты являешься интеллектуальным ядром SENTRA_AI.
 `
             }
         ];
 
-        // Контекст текущего чата
+        // ========================================
+        // КОНТЕКСТ ЧАТА
+        // ========================================
+
         if (Array.isArray(context)) {
             for (const item of context.slice(-10)) {
 
@@ -87,7 +101,10 @@ app.post("/api/chat", async (req, res) => {
             }
         }
 
-        // Память
+        // ========================================
+        // ПАМЯТЬ
+        // ========================================
+
         if (memoryContext) {
             messages.push({
                 role: "system",
@@ -95,13 +112,81 @@ app.post("/api/chat", async (req, res) => {
             });
         }
 
-        // Текущее сообщение
-        messages.push({
-            role: "user",
-            content: message
-        });
+        // ========================================
+        // VISION
+        // ========================================
 
-        console.log("📩 Сообщение:", message);
+        if (imageData) {
+
+            // Проверяем, что это Data URL изображения
+            if (
+                typeof imageData !== "string" ||
+                !imageData.startsWith("data:image/")
+            ) {
+                return res.status(400).json({
+                    error: "Неверный формат изображения"
+                });
+            }
+
+            // Проверяем размер Base64-данных
+            const approxBytes =
+                Math.floor((imageData.length * 3) / 4);
+
+            if (approxBytes > 20 * 1024 * 1024) {
+                return res.status(413).json({
+                    error: "Изображение слишком большое. Максимум 20 МБ."
+                });
+            }
+
+            messages.push({
+                role: "user",
+                content: [
+                    {
+                        type: "text",
+                        text: message.trim() ||
+                            "Что изображено на этой фотографии? Опиши подробно."
+                    },
+                    {
+                        type: "image_url",
+                        image_url: {
+                            url: imageData
+                        }
+                    }
+                ]
+            });
+
+        } else {
+
+            // ========================================
+            // ОБЫЧНЫЙ ТЕКСТОВЫЙ ЧАТ
+            // ========================================
+
+            messages.push({
+                role: "user",
+                content: message
+            });
+        }
+
+        console.log(
+            imageData
+                ? "🖼️ SENTRA получила изображение"
+                : "📩 Сообщение:",
+            message || "(без текста)"
+        );
+
+        // ========================================
+        // ВЫБОР МОДЕЛИ
+        // ========================================
+
+        const model = imageData
+            ? "qwen/qwen3.6-27b"
+            : "openai/gpt-oss-20b";
+
+        console.log("🧠 Модель:", model);
+
+        // ========================================
+        // ЗАПРОС GROQ
+        // ========================================
 
         const response = await fetch(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -110,27 +195,39 @@ app.post("/api/chat", async (req, res) => {
 
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+                    "Authorization":
+                        `Bearer ${process.env.GROQ_API_KEY}`
                 },
 
                 body: JSON.stringify({
-                    model: "openai/gpt-oss-20b",
+                    model,
                     messages,
-                    temperature: 0.7,
-                    max_tokens: 1200
+                    temperature: imageData ? 0.7 : 0.7,
+                    max_completion_tokens: 1200
                 })
             }
         );
 
         const data = await response.json();
 
+        // ========================================
+        // ОШИБКА GROQ
+        // ========================================
+
         if (!response.ok) {
+
             console.error("❌ GROQ ERROR:", data);
 
-            return res.status(500).json({
-                error: data.error?.message || "Ошибка Groq"
+            return res.status(response.status).json({
+                error:
+                    data.error?.message ||
+                    "Ошибка Groq"
             });
         }
+
+        // ========================================
+        // ОТВЕТ
+        // ========================================
 
         const answer =
             data.choices?.[0]?.message?.content ||
@@ -164,7 +261,8 @@ app.listen(PORT, "0.0.0.0", () => {
     console.log("========================================");
     console.log(`🌐 PORT → ${PORT}`);
     console.log("🌍 HOST → 0.0.0.0");
-    console.log("🧠 AI Core → Groq");
+    console.log("🧠 TEXT → GPT OSS 20B");
+    console.log("👁️ VISION → Qwen 3.6 27B");
     console.log("💾 Context → ENABLED");
     console.log("🤖 Identity → SENTRA_AI");
     console.log("========================================");
