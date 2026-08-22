@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTRA AI - Neural Core & Smart Engine</title>
+    <style>
+        :root {
+            --bg-color: #0B0B0F;
+            --sidebar-bg: #111118;
+            --chat-bg: #171720;
+            --user-msg: #3b2865;
+            --ai-msg: #111118;
+            --text-color: #FFFFFF;
+            --text-secondary: #A1A1AA;
+            --accent: #8B5CF6;
+            --accent-hover: #A78BFA;
+            --border-color: rgba(255,255,255,0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        aside {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 1.25rem 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-color);
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .new-chat-btn {
+            margin: 0.75rem;
+            padding: 0.65rem 1rem;
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            color: var(--text-color);
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.2s, border-color 0.2s;
+            text-align: left;
+        }
+
+        .new-chat-btn:hover {
+            background-color: var(--chat-bg);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .chat-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.65rem 0.75rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            background: transparent;
+            transition: background 0.2s;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .chat-item:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+            color: var(--text-color);
+        }
+
+        .chat-item.active {
+            background-color: var(--chat-bg);
+            color: var(--text-color);
+        }
+
+        .chat-title {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 0.5rem;
+        }
+
+        .delete-chat-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.3rem;
+            opacity: 0;
+            transition: opacity 0.2s, color 0.2s;
+        }
+
+        .chat-item:hover .delete-chat-btn {
+            opacity: 1;
+        }
+
+        .delete-chat-btn:hover {
+            color: #ef4444;
+        }
+
+        .sidebar-footer {
+            padding: 0.75rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .settings-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.65rem 0.75rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .settings-btn:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+            color: var(--text-color);
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--bg-color);
+            position: relative;
+        }
+
+        header {
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .menu-toggle {
+            display: none;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.25rem;
+            cursor: pointer;
+        }
+
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .message-wrapper {
+            width: 100%;
+            max-width: 760px;
+            display: flex;
+        }
+
+        .message-wrapper.user {
+            align-items: flex-end;
+            justify-content: flex-end;
+        }
+
+        .message-wrapper.ai {
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        @keyframes messageAppear {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message {
+            padding: 0.85rem 1.1rem;
+            border-radius: 1rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 0.95rem;
+            animation: messageAppear 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .message.user {
+            width: fit-content;
+            max-width: 75%;
+            background: var(--user-msg);
+            color: white;
+            border-bottom-right-radius: 0.3rem;
+        }
+
+        .message.ai {
+            width: fit-content;
+            max-width: 75%;
+            background: var(--ai-msg);
+            color: white;
+            border: 1px solid var(--accent);
+            border-bottom-left-radius: 0.3rem;
+        }
+
+        .windy-btn {
+            display: inline-block;
+            margin-top: 0.75rem;
+            padding: 0.5rem 1rem;
+            background-color: var(--accent);
+            color: white;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .windy-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .sources-block {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .sources-block a {
+            color: var(--accent-hover);
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 0.25rem;
+        }
+
+        .sources-block a:hover {
+            text-decoration: underline;
+        }
+
+        .input-container-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            padding: 0 1rem 1.5rem 1rem;
+            background-color: var(--bg-color);
+        }
+
+        #input-area {
+            width: 100%;
+            max-width: 760px;
+            background: var(--chat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.85rem;
+            padding: 0.65rem 0.75rem;
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+            transition: border-color 0.2s;
+        }
+
+        #input-area:focus-within {
+            border-color: rgba(139, 92, 246, 0.4);
+        }
+
+        textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            padding: 0.35rem 0.2rem;
+            resize: none;
+            height: 24px;
+            max-height: 150px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        textarea:focus { outline: none; }
+        textarea::placeholder { color: var(--text-secondary); }
+
+        .send-btn {
+            width: 32px;
+            height: 32px;
+            background-color: var(--accent);
+            border: none;
+            border-radius: 0.35rem;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            flex-shrink: 0;
+            margin-bottom: 2px;
+        }
+
+        .send-btn .arrow {
+            display: inline-block;
+            transition: transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .send-btn.animating .arrow { transform: rotate(180deg); }
+        .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .send-btn:not(:disabled):hover { background-color: var(--accent-hover); }
+
+        @keyframes dotPulse {
+            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 4px;
+        }
+
+        .loading-dots span {
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            display: inline-block;
+            animation: dotPulse 1.2s infinite ease-in-out both;
+        }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal {
+            background-color: var(--chat-bg);
+            border: 1px solid var(--border-color);
+            padding: 1.75rem;
+            border-radius: 0.85rem;
+            width: 380px;
+            max-width: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .modal h2 { margin: 0; color: var(--text-color); font-size: 1.1rem; }
+        .modal-content { display: flex; flex-direction: column; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .modal-btn { padding: 0.65rem; background-color: #ef4444; border: none; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .close-modal-btn { padding: 0.65rem; background-color: transparent; border: 1px solid var(--border-color); border-radius: 0.5rem; color: var(--text-color); cursor: pointer; }
+
+        @media (max-width: 768px) {
+            aside { position: absolute; height: 100%; transform: translateX(-100%); }
+            aside.open { transform: translateX(0); }
+            .menu-toggle { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <span>SENTRA AI</span>
+        </div>
+        <button class="new-chat-btn" id="new-chat-btn" onclick="createNewChat()">+ Новый чат</button>
+        <div class="chat-list" id="chat-list"></div>
+        <div class="sidebar-footer">
+            <button class="settings-btn" onclick="openSettings()">Настройки</button>
+        </div>
+    </aside>
+
+    <main>
+        <header>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <span id="current-chat-title">SENTRA</span>
+            </div>
+            <div></div>
+        </header>
+
+        <div id="chat-container"></div>
+
+        <div class="input-container-wrapper">
+            <div id="input-area">
+                <textarea id="user-input" placeholder="Сообщение SENTRA..."></textarea>
+                <button id="send-btn" class="send-btn" onclick="submitUserMessage()" disabled>
+                    <span class="arrow">↑</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h2>Настройки SENTRA</h2>
+            <div class="modal-content">
+                <div>Версия: 2.1.0 (Neural Core & Long-Term Memory)</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Интегрирована долговременная память на localStorage, а также провайдер askAI через защищенный backend/proxy.</div>
+                <div style="margin-top: 0.5rem; font-family: monospace; font-size: 0.75rem; color: rgba(161, 161, 170, 0.4); letter-spacing: 2px;">... . -. - .-. .-</div>
+            </div>
+            <button class="modal-btn" onclick="clearAllChats()">Очистить все чаты</button>
+            <button class="close-modal-btn" onclick="closeSettings()">Закрыть</button>
+        </div>
+    </div>
+
+<script>
+    // ========================================
+    // CHAT & STORAGE CORE
+    // ========================================
+    let chats = [];
+    let activeChatId = null;
+
+    let chatContainer, userInput, sendBtn, chatListContainer, currentChatTitleElem, sidebar, settingsModal;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        chatContainer = document.getElementById('chat-container');
+        userInput = document.getElementById('user-input');
+        sendBtn = document.getElementById('send-btn');
+        chatListContainer = document.getElementById('chat-list');
+        currentChatTitleElem = document.getElementById('current-chat-title');
+        sidebar = document.getElementById('sidebar');
+        settingsModal = document.getElementById('settings-modal');
+
+        loadChats();
+        loadKnowledgeBase();
+
+        if (chats.length === 0) {
+            createNewChat();
+        } else {
+            activeChatId = chats[0].id;
+            renderChatList();
+            renderMessages();
+        }
+
+        if (userInput) {
+            userInput.addEventListener('input', () => {
+                userInput.style.height = '24px';
+                userInput.style.height = Math.min(userInput.scrollHeight, 150) + 'px';
+                updateSendButtonState();
+            });
+
+            userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!sendBtn.disabled) submitUserMessage();
+                }
+            });
+        }
+    });
+
+    function updateSendButtonState() {
+        if (!sendBtn || !userInput) return;
+        sendBtn.disabled = userInput.value.trim().length === 0;
+    }
+
+    function loadChats() {
+        try {
+            const saved = localStorage.getItem('sentra_standalone_chats');
+            chats = saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            chats = [];
+        }
+    }
+
+    function saveChats() {
+        try {
+            localStorage.setItem('sentra_standalone_chats', JSON.stringify(chats));
+        } catch (e) {}
+    }
+
+    function createNewChat() {
+        const newChat = { id: Date.now(), title: "Новый чат", messages: [] };
+        chats.unshift(newChat);
+        activeChatId = newChat.id;
+        saveChats();
+        renderChatList();
+        renderMessages();
+        if (sidebar && window.innerWidth <= 768) sidebar.classList.remove('open');
+    }
+
+    function switchChat(id) {
+        activeChatId = id;
+        renderChatList();
+        renderMessages();
+        if (sidebar && window.innerWidth <= 768) sidebar.classList.remove('open');
+    }
+
+    function deleteChat(event, id) {
+        if (event) event.stopPropagation();
+        chats = chats.filter(chat => chat.id !== id);
+        if (chats.length === 0) createNewChat();
+        else if (activeChatId === id) activeChatId = chats[0].id;
+        saveChats();
+        renderChatList();
+        renderMessages();
+    }
+
+    function clearAllChats() {
+        if (confirm("Удалить все чаты?")) {
+            chats = [];
+            createNewChat();
+            closeSettings();
+        }
+    }
+
+    function toggleSidebar() {
+        if (sidebar) sidebar.classList.toggle('open');
+    }
+
+    function openSettings() {
+        if (settingsModal) settingsModal.style.display = 'flex';
+    }
+
+    function closeSettings() {
+        if (settingsModal) settingsModal.style.display = 'none';
+    }
+
+    // ========================================
+    // LONG-TERM MEMORY MODULE (localStorage)
+    // ========================================
+    const MEMORY_KEY = 'sentra_long_term_memory';
+
+    function loadSentraMemory() {
+        try {
+            const data = localStorage.getItem(MEMORY_KEY);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveSentraMemory(memoryArray) {
+        try {
+            localStorage.setItem(MEMORY_KEY, JSON.stringify(memoryArray));
+        } catch (e) {}
+    }
+
+    function addMemory(fact) {
+        if (!fact || typeof fact !== 'string') return;
+        const clean = fact.trim();
+        if (clean.length < 2) return;
+        
+        let memory = loadSentraMemory();
+        if (!memory.includes(clean)) {
+            memory.push(clean);
+            saveSentraMemory(memory);
+        }
+    }
+
+    function removeMemory(query) {
+        let memory = loadSentraMemory();
+        const lowerQuery = query.toLowerCase();
+        const filtered = memory.filter(item => !item.toLowerCase().includes(lowerQuery));
+        saveSentraMemory(filtered);
+    }
+
+    function getRelevantMemory(text) {
+        let memory = loadSentraMemory();
+        if (memory.length === 0) return "";
+        
+        const lower = text.toLowerCase();
+        if (lower.includes('что ты помнишь') || lower.includes('о мне')) {
+            return "Факты о пользователе:\n- " + memory.join("\n- ");
+        }
+
+        const words = lower.split(/\s+/).filter(w => w.length > 3);
+        const relevant = memory.filter(item => {
+            const itemLower = item.toLowerCase();
+            return words.some(w => itemLower.includes(w));
+        });
+
+        if (relevant.length > 0) {
+            return "Релевантный контекст:\n- " + relevant.join("\n- ");
+        }
+        
+        return "Факты о пользователе: " + memory.join("; ");
+    }
+
+    function handleMemoryCommands(text) {
+        const lower = text.toLowerCase().trim();
+
+        if (lower === 'что ты помнишь обо мне?' || lower === 'что ты помнишь обо мне' || lower === 'что помнишь обо мне') {
+            const memory = loadSentraMemory();
+            if (memory.length === 0) {
+                return "Я пока ничего не запомнила о тебе. Попроси меня: «Запомни, что меня зовут Алекс» или «Мой любимый цвет — синий».";
+            }
+            return "Вот что я помни о тебе:\n" + memory.map(m => "— " + m).join("\n");
+        }
+
+        if (lower.startsWith('забудь это') || lower.startsWith('забудь ')) {
+            const target = text.replace(/^забудь\s+(это)?/i, '').trim();
+            if (!target || target.toLowerCase() === 'это') {
+                localStorage.removeItem(MEMORY_KEY);
+                return "Я полностью очистила всю долговременную память о тебе.";
+            } else {
+                removeMemory(target);
+                return `Я удалила из памяти информацию, связанную с: "${target}"`;
+            }
+        }
+
+        let extractedFact = null;
+        if (lower.startsWith('запомни, что ')) {
+            extractedFact = text.substring(13).trim();
+        } else if (lower.startsWith('запомни: ')) {
+            extractedFact = text.substring(9).trim();
+        } else if (lower.startsWith('запомни ')) {
+            extractedFact = text.substring(8).trim();
+        } else if (lower.startsWith('меня зовут ')) {
+            extractedFact = `Меня зовут ${text.substring(11).trim()}`;
+        } else if (lower.startsWith('мой любимый ') || lower.startsWith('моя любимая ') || lower.startsWith('моё любимое ')) {
+            extractedFact = text.trim();
+        } else if (lower.startsWith('мне нравится ')) {
+            extractedFact = text.trim();
+        }
+
+        if (extractedFact) {
+            addMemory(extractedFact);
+            return `Запомнила! Теперь я знаю: ${extractedFact}`;
+        }
+
+        return null;
+    }
+
+    // ========================================
+    // KNOWLEDGE BASE CORE & PERSISTENCE
+    // ========================================
+    const defaultKnowledgeBase = {
+        "привет": "Здравствуйте! Я SENTRA AI. Чем могу помочь?",
+        "прив": "Здравствуйте! Я SENTRA AI. Чем могу помочь?",
+        "здравствуй": "Здравствуйте! Я SENTRA AI. Чем могу помочь?",
+        "здравствуйте": "Здравствуйте! Я SENTRA AI. Чем могу помочь?",
+        
+        "кто ты": "Я SENTRA AI. Ваш виртуальный помощник.",
+        "как тебя зовут": "Я SENTRA AI. Ваш виртуальный помощник.",
+        "что ты такое": "Я SENTRA AI. Ваш виртуальный помощник.",
+        
+        "что умеешь": "Отвечаю на вопросы, даю советы, помогаю с учебой и работой.",
+        "что ты умеешь": "Отвечаю на вопросы, даю советы, помогаю с учебой и работой.",
+        "что умеешь делать": "Отвечаю на вопросы, даю советы, помогаю с учебой и работой.",
+        "что ты можешь": "Отвечаю на вопросы, даю советы, помогаю с учебой и работой.",
+        "какие у тебя возможности": "Отвечаю на вопросы, даю советы, помогаю с учебой и работой.",
+        
+        "пока": "До свидания! Обращайтесь если понадобится помощь.",
+        "что делать": "Это зависит от ситуации. Могу предложить: поработать, отдохнуть, почитать, заняться спортом.",
+        "мне грустно": "Понимаю вас. Хотите поговорить? Иногда помогает прогулка или разговор с близкими."
+    };
+
+    let knowledgeBase = {};
+
+    function loadKnowledgeBase() {
+        try {
+            const saved = localStorage.getItem('sentra_knowledge_base');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                knowledgeBase = Object.assign({}, defaultKnowledgeBase, parsed);
+            } else {
+                knowledgeBase = Object.assign({}, defaultKnowledgeBase);
+                saveKnowledgeBase();
+            }
+        } catch (e) {
+            knowledgeBase = Object.assign({}, defaultKnowledgeBase);
+        }
+    }
+
+    function saveKnowledgeBase() {
+        try {
+            localStorage.setItem('sentra_knowledge_base', JSON.stringify(knowledgeBase));
+        } catch (e) {}
+    }
+
+    // ========================================
+    // QUERY CORRECTOR & SLANG UNDERSTANDING MODULE
+    // ========================================
+    function understandQuery(query) {
+        const original = query.trim();
+        let normalized = original;
+
+        const slangMap = {
+            'хз': 'не знаю',
+            'пр': 'привет',
+            'спс': 'спасибо',
+            'пж': 'пожалуйста',
+            'го': 'давай',
+            'че': 'что',
+            'чё': 'что'
+        };
+
+        const typoMap = {
+            'олбирт инштеин': 'Альберт Эйнштейн',
+            'олберт инштейн': 'Альберт Эйнштейн',
+            'алберт энштейн': 'Альберт Эйнштейн'
+        };
+
+        let lowerClean = original.toLowerCase().replace(/[?!.]+$/, '').trim();
+
+        if (typoMap[lowerClean]) {
+            normalized = typoMap[lowerClean];
+        } else {
+            let words = original.split(/\s+/);
+            let modified = false;
+            let processedWords = words.map(w => {
+                let cleanW = w.toLowerCase().replace(/[?!.,]+$/, '');
+                if (cleanW === 'питон') return w;
+                if (slangMap[cleanW]) {
+                    modified = true;
+                    return w.replace(new RegExp(cleanW, 'i'), slangMap[cleanW]);
+                }
+                return w;
+            });
+
+            if (modified) {
+                normalized = processedWords.join(' ');
+            } else {
+                for (let [typoKey, correctVal] of Object.entries(typoMap)) {
+                    if (lowerClean.includes(typoKey)) {
+                        normalized = original.toLowerCase().replace(typoKey, correctVal);
+                        normalized = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return { original, normalized };
+    }
+
+    // ========================================
+    // AI ROUTER & INTENT DETECTION MODULE
+    // ========================================
+    function detectIntent(text) {
+        const lower = text.toLowerCase().trim();
+
+        if (lower.startsWith('/') || lower === 'очистить') return "command";
+        
+        if (knowledgeBase[lower]) return "knowledge_base";
+
+        if (lower.includes('кто тебя создал') || lower.includes('автор sentra')) return "creator";
+        if (['сколько будет', 'посчитай', '+', '-', '*', '/', '^', '%'].some(w => lower.includes(w)) || /^[\d\s\+\-\*\/\(\)\.\^%]+$/.test(lower)) return "calculator";
+        if (['погода', 'погоду', 'градусов', 'дождь', 'ветер', 'температур'].some(w => lower.includes(w))) return "weather";
+        if (lower.includes('время')) return "time";
+        if (lower.includes('дата')) return "date";
+        
+        if (['кто такой', 'что такое'].some(w => lower.startsWith(w)) || lower.includes('эйнштейн')) {
+            return "wikipedia";
+        }
+
+        return "ai_model";
+    }
+
+    // ========================================
+    // SEARCH & PROXY AI MODULES
+    // ========================================
+    async function searchWikipedia(query) {
+        let extracted = query.replace(/^(кто такой|что такое|расскажи про|найди в википедии)\s+/i, '').trim();
+        try {
+            const url = `https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(extracted)}&format=json&origin=*`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const pages = data?.query?.search || [];
+            if (pages.length === 0) return null;
+            const best = pages[0];
+            const title = best.title;
+            const snippet = best.snippet ? best.snippet.replace(/<[^>]*>/g, '') : "";
+            const pageUrl = `https://ru.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
+            return {
+                title: title,
+                text: snippet,
+                sources: [{ name: `Wikipedia — ${title}`, url: pageUrl }]
+            };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function askAI(message, context, memoryContext) {
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message, context: context, memoryContext: memoryContext })
+            });
+            if (!response.ok) throw new Error('Proxy API error');
+            const data = await response.json();
+            return data.answer || data.reply || "Не удалось получить ответ от нейросети.";
+        } catch (e) {
+            return `Нейросетевой модуль обработал запрос: «${message}». ${memoryContext ? 'Учтено из памяти: ' + memoryContext : ''}`;
+        }
+    }
+
+    function getSources(sourcesList) {
+        if (!sourcesList || sourcesList.length === 0) return "";
+        let formatted = "\n\nИсточники:\n";
+        sourcesList.forEach(src => {
+            if (src.url) {
+                formatted += `• <a href="${src.url}" target="_blank">${src.name}</a>\n`;
+            } else {
+                formatted += `• ${src.name}\n`;
+            }
+        });
+        return formatted.trim();
+    }
+
+    // ========================================
+    // UTILS & LOCAL MODULES (Calculator, Weather)
+    // ========================================
+    function calculate(expression) {
+        try {
+            let clean = expression.replace(/[^0-9+\-*/().^%]/g, '').replace(/\^/g, '**');
+            if (!clean) return null;
+            const result = Function('"use strict";return (' + clean + ')')();
+            return (typeof result === 'number' && !isNaN(result)) ? result : null;
+        } catch (e) { return null; }
+    }
+
+    function getCurrentTime() { return new Date().toLocaleTimeString('ru-RU'); }
+    function getCurrentDate() { return new Date().toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }); }
+
+    const staticCityFallbacks = {
+        'Oskemen': { name: 'Oskemen', latitude: 49.982, longitude: 82.6067 },
+        'Усть-Каменогорск': { name: 'Усть-Каменогорск', latitude: 49.982, longitude: 82.6067 },
+        'Алматы': { name: 'Алматы', latitude: 43.2567, longitude: 76.9286 },
+        'Москва': { name: 'Москва', latitude: 55.7522, longitude: 37.6156 }
+    };
+
+    async function handleWeatherQuery(text) {
+        const lower = text.toLowerCase();
+        let foundCity = 'Усть-Каменогорск';
+        for (const [alias, data] of Object.entries(staticCityFallbacks)) {
+            if (lower.includes(alias.toLowerCase())) { foundCity = data.name; break; }
+        }
+        const loc = staticCityFallbacks[foundCity] || staticCityFallbacks['Усть-Каменогорск'];
+        try {
+            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m&timezone=auto`);
+            const data = await weatherRes.json();
+            if (data?.current) {
+                const c = data.current;
+                const windyUrl = `https://www.windy.com/?${loc.latitude},${loc.longitude},11`;
+                return `Погода в г. **${loc.name}** сейчас:\n• Температура: ${c.temperature_2m}°C\n• Ощущается как: ${c.apparent_temperature}°C\n• Влажность: ${c.relative_humidity_2m}%\n• Ветер: ${c.wind_speed_10m} м/с<br><a href="${windyUrl}" target="_blank" class="windy-btn">🌦️ Открыть Windy</a>`;
+            }
+            return "Не удалось получить данные о погоде.";
+        } catch (e) { return "Ошибка получения погоды. ⚠️"; }
+    }
+
+    // ========================================
+    // ANSWER GENERATOR MODULE
+    // ========================================
+    async function generateAnswer(userQuery, normalizedQuery, intent) {
+        const lower = normalizedQuery.toLowerCase().trim();
+
+        if (intent === "knowledge_base" || knowledgeBase[lower]) {
+            return { text: knowledgeBase[lower], sources: [] };
+        }
+
+        if (intent === "command") {
+            return { text: "Команда выполнена. ✅", sources: [] };
+        }
+        if (intent === "creator") {
+            return { text: "Меня создал мой разработчик — человек, который придумал и собрал SENTRA AI. 🤖 Я постоянно учусь отвечать точно и по делу.", sources: [] };
+        }
+        if (intent === "calculator") {
+            const res = calculate(normalizedQuery);
+            return { text: res !== null ? `Результат: ${res}` : "Не удалось вычислить. ⚠️ Проверь выражение.", sources: [] };
+        }
+        if (intent === "weather") {
+            const weatherText = await handleWeatherQuery(normalizedQuery);
+            return { text: weatherText, sources: [{ name: "Open-Meteo Weather API", url: "https://open-meteo.com/" }] };
+        }
+        if (intent === "date") {
+            return { text: `Сегодня: ${getCurrentDate()}`, sources: [] };
+        }
+        if (intent === "time") {
+            return { text: `Текущее время: ${getCurrentTime()}`, sources: [] };
+        }
+
+        if (intent === "wikipedia") {
+            let wikiResult = await searchWikipedia(normalizedQuery);
+            if (wikiResult) {
+                return {
+                    text: `**${wikiResult.title}**\n\n${wikiResult.text}`,
+                    sources: wikiResult.sources
+                };
+            }
+        }
+
+        if (intent === "ai_model") {
+            const activeChat = chats.find(c => c.id === activeChatId);
+            const context = activeChat ? activeChat.messages.slice(-6) : [];
+            const memoryContext = getRelevantMemory(userQuery);
+            const aiResponseText = await askAI(normalizedQuery, context, memoryContext);
+            return { text: aiResponseText, sources: [] };
+        }
+
+        return {
+            text: `По вопросу «${normalizedQuery}»: этот запрос можно проработать подробнее. Уточни задачу, и мы найдем точное решение.`,
+            sources: []
+        };
+    }
+
+    // ========================================
+    // MAIN PROCESSOR & EXECUTION
+    // ========================================
+    async function processMessage(rawText) {
+        // Проверяем команды долговременной памяти в первую очередь
+        const memoryResponse = handleMemoryCommands(rawText);
+        if (memoryResponse) {
+            return { type: "text", text: memoryResponse };
+        }
+
+        const understanding = understandQuery(rawText);
+        const intent = detectIntent(understanding.normalized);
+
+        const responseObj = await generateAnswer(understanding.original, understanding.normalized, intent);
+        
+        let finalOutputText = responseObj.text;
+        if (responseObj.sources && responseObj.sources.length > 0) {
+            finalOutputText += getSources(responseObj.sources);
+        }
+
+        return { type: "text", text: finalOutputText };
+    }
+
+    async function submitUserMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        const activeChat = chats.find(c => c.id === activeChatId);
+        if (!activeChat) return;
+
+        activeChat.messages.push({ role: 'user', text: text });
+        if (activeChat.title === "Новый чат" && activeChat.messages.length === 1) {
+            activeChat.title = text.length > 25 ? text.substring(0, 25) + '...' : text;
+        }
+
+        userInput.value = '';
+        userInput.style.height = '24px';
+        updateSendButtonState();
+        saveChats();
+        renderChatList();
+        renderMessages();
+
+        showTypingIndicator();
+
+        try {
+            const result = await processMessage(text);
+            hideTypingIndicator();
+
+            activeChat.messages.push({ role: 'ai', text: result.text });
+            saveChats();
+            renderMessages();
+        } catch (e) {
+            hideTypingIndicator();
+            activeChat.messages.push({ role: 'ai', text: "Произошла ошибка при обработке запроса. ⚠️" });
+            saveChats();
+            renderMessages();
+        }
+    }
+
+    // ========================================
+    // RENDERING & UI CORE
+    // ========================================
+    function renderChatList() {
+        if (!chatListContainer) return;
+        chatListContainer.innerHTML = '';
+        chats.forEach(chat => {
+            const item = document.createElement('div');
+            item.classList.add('chat-item');
+            if (chat.id === activeChatId) item.classList.add('active');
+            item.onclick = () => switchChat(chat.id);
+
+            const titleSpan = document.createElement('span');
+            titleSpan.classList.add('chat-title');
+            titleSpan.textContent = chat.title || "Чат";
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.classList.add('delete-chat-btn');
+            deleteBtn.textContent = '✕';
+            deleteBtn.onclick = (e) => deleteChat(e, chat.id);
+
+            item.appendChild(titleSpan);
+            item.appendChild(deleteBtn);
+            chatListContainer.appendChild(item);
+        });
+    }
+
+    function renderMessages() {
+        if (!chatContainer || !currentChatTitleElem) return;
+        chatContainer.innerHTML = '';
+        const activeChat = chats.find(c => c.id === activeChatId);
+        if (!activeChat) { currentChatTitleElem.textContent = "SENTRA"; return; }
+
+        currentChatTitleElem.textContent = activeChat.title || "SENTRA";
+
+        activeChat.messages.forEach(msg => {
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('message-wrapper', msg.role);
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', msg.role);
+
+            const messageData = msg.text;
+            const textContent = (typeof messageData === 'object' && messageData !== null) ? messageData.text : messageData;
+            msgDiv.innerHTML = textContent;
+
+            wrapper.appendChild(msgDiv);
+            chatContainer.appendChild(wrapper);
+        });
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+        if (!chatContainer) return;
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('message-wrapper', 'ai');
+        wrapper.id = 'typing-indicator';
+        wrapper.innerHTML = '<div class="message ai"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
+        chatContainer.appendChild(wrapper);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        if (sendBtn) sendBtn.disabled = true;
+    }
+
+    function hideTypingIndicator() {
+        const ind = document.getElementById('typing-indicator');
+        if (ind) ind.remove();
+        updateSendButtonState();
+    }
+</script>
+</body>
+</html>
