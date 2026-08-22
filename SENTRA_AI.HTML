@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENTRA AI - Neural Core & Smart Engine</title>
+    <!-- Библиотека для парсинга Markdown в HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Библиотека для безопасной очистки HTML (защита от XSS) -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
     <style>
         :root {
             --bg-color: #0B0B0F;
@@ -224,7 +228,6 @@
             padding: 0.85rem 1.1rem;
             border-radius: 1rem;
             line-height: 1.6;
-            white-space: pre-wrap;
             word-break: break-word;
             font-size: 0.95rem;
             animation: messageAppear 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -236,6 +239,7 @@
             background: var(--user-msg);
             color: white;
             border-bottom-right-radius: 0.3rem;
+            white-space: pre-wrap;
         }
 
         .message.ai {
@@ -245,6 +249,65 @@
             color: white;
             border: 1px solid var(--accent);
             border-bottom-left-radius: 0.3rem;
+        }
+
+        /* Стили для Markdown-разметки сообщений AI */
+        .markdown-body {
+            white-space: normal;
+        }
+
+        .markdown-body h1, 
+        .markdown-body h2, 
+        .markdown-body h3 {
+            margin-top: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .markdown-body h1 { font-size: 1.25rem; }
+        .markdown-body h2 { font-size: 1.1rem; }
+        .markdown-body h3 { font-size: 1rem; }
+
+        .markdown-body p {
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-body p:last-child {
+            margin-bottom: 0;
+        }
+
+        .markdown-body ul, 
+        .markdown-body ol {
+            padding-left: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-body code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.3rem;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .markdown-body pre {
+            background: #0B0B0F;
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .markdown-body a {
+            color: var(--accent-hover);
+            text-decoration: underline;
         }
 
         .windy-btn {
@@ -457,6 +520,12 @@
     </div>
 
 <script>
+    // Инициализация настроек парсера Markdown
+    marked.setOptions({
+        breaks: true,
+        gfm: true
+    });
+
     // ========================================
     // CHAT & STORAGE CORE
     // ========================================
@@ -566,6 +635,63 @@
 
     function closeSettings() {
         if (settingsModal) settingsModal.style.display = 'none';
+    }
+
+    // Рендеринг списка чатов в боковой панели
+    function renderChatList() {
+        if (!chatListContainer) return;
+        chatListContainer.innerHTML = '';
+        chats.forEach(chat => {
+            const item = document.createElement('div');
+            item.className = `chat-item ${chat.id === activeChatId ? 'active' : ''}`;
+            item.onclick = () => switchChat(chat.id);
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'chat-title';
+            titleSpan.textContent = chat.title;
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'delete-chat-btn';
+            delBtn.textContent = '✕';
+            delBtn.onclick = (e) => deleteChat(e, chat.id);
+
+            item.appendChild(titleSpan);
+            item.appendChild(delBtn);
+            chatListContainer.appendChild(item);
+        });
+    }
+
+    // Функция отрисовки сообщений с поддержкой Markdown для ИИ
+    function renderMessages() {
+        if (!chatContainer) return;
+        chatContainer.innerHTML = '';
+
+        const activeChat = chats.find(c => c.id === activeChatId);
+        if (!activeChat) return;
+
+        if (currentChatTitleElem) {
+            currentChatTitleElem.textContent = activeChat.title;
+        }
+
+        activeChat.messages.forEach(msg => {
+            const wrapper = document.createElement('div');
+            wrapper.className = `message-wrapper ${msg.sender}`;
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${msg.sender}`;
+
+            if (msg.sender === 'ai') {
+                const rawHtml = marked.parse(msg.text || '');
+                messageDiv.innerHTML = `<div class="markdown-body">${DOMPurify.sanitize(rawHtml)}</div>`;
+            } else {
+                messageDiv.textContent = msg.text;
+            }
+
+            wrapper.appendChild(messageDiv);
+            chatContainer.appendChild(wrapper);
+        });
+
+        chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
     // ========================================
@@ -722,7 +848,7 @@
     }
 
     // ========================================
-    // QUERY CORRECTOR & SLANG UNDERSTANDING MODULE
+    // QUERY CORRECTOR & SLANG UNDERSTANDING
     // ========================================
     function understandQuery(query) {
         const original = query.trim();
@@ -778,7 +904,7 @@
     }
 
     // ========================================
-    // AI ROUTER & INTENT DETECTION MODULE
+    // AI ROUTER & INTENT DETECTION
     // ========================================
     function detectIntent(text) {
         const lower = text.toLowerCase().trim();
@@ -854,7 +980,7 @@
     }
 
     // ========================================
-    // UTILS & LOCAL MODULES (Calculator, Weather)
+    // UTILS & LOCAL MODULES
     // ========================================
     function calculate(expression) {
         try {
@@ -912,168 +1038,87 @@
         }
         if (intent === "calculator") {
             const res = calculate(normalizedQuery);
-            return { text: res !== null ? `Результат: ${res}` : "Не удалось вычислить. ⚠️ Проверь выражение.", sources: [] };
+            if (res !== null) return { text: `Результат: **${res}**`, sources: [] };
         }
         if (intent === "weather") {
             const weatherText = await handleWeatherQuery(normalizedQuery);
-            return { text: weatherText, sources: [{ name: "Open-Meteo Weather API", url: "https://open-meteo.com/" }] };
-        }
-        if (intent === "date") {
-            return { text: `Сегодня: ${getCurrentDate()}`, sources: [] };
+            return { text: weatherText, sources: [] };
         }
         if (intent === "time") {
-            return { text: `Текущее время: ${getCurrentTime()}`, sources: [] };
+            return { text: `Текущее время: **${getCurrentTime()}**`, sources: [] };
         }
-
+        if (intent === "date") {
+            return { text: `Сегодня: **${getCurrentDate()}**`, sources: [] };
+        }
         if (intent === "wikipedia") {
-            let wikiResult = await searchWikipedia(normalizedQuery);
-            if (wikiResult) {
-                return {
-                    text: `**${wikiResult.title}**\n\n${wikiResult.text}`,
-                    sources: wikiResult.sources
-                };
+            const wiki = await searchWikipedia(normalizedQuery);
+            if (wiki) {
+                return { text: `### ${wiki.title}\n\n${wiki.text}`, sources: wiki.sources };
             }
         }
 
-        if (intent === "ai_model") {
-            const activeChat = chats.find(c => c.id === activeChatId);
-            const context = activeChat ? activeChat.messages.slice(-6) : [];
-            const memoryContext = getRelevantMemory(userQuery);
-            const aiResponseText = await askAI(normalizedQuery, context, memoryContext);
-            return { text: aiResponseText, sources: [] };
-        }
-
-        return {
-            text: `По вопросу «${normalizedQuery}»: этот запрос можно проработать подробнее. Уточни задачу, и мы найдем точное решение.`,
-            sources: []
-        };
+        const memoryContext = getRelevantMemory(normalizedQuery);
+        const aiReply = await askAI(normalizedQuery, "", memoryContext);
+        return { text: aiReply, sources: [] };
     }
 
     // ========================================
-    // MAIN PROCESSOR & EXECUTION
+    // MESSAGE SUBMISSION & FLOW HANDLER
     // ========================================
-    async function processMessage(rawText) {
-        // Проверяем команды долговременной памяти в первую очередь
-        const memoryResponse = handleMemoryCommands(rawText);
-        if (memoryResponse) {
-            return { type: "text", text: memoryResponse };
-        }
-
-        const understanding = understandQuery(rawText);
-        const intent = detectIntent(understanding.normalized);
-
-        const responseObj = await generateAnswer(understanding.original, understanding.normalized, intent);
-        
-        let finalOutputText = responseObj.text;
-        if (responseObj.sources && responseObj.sources.length > 0) {
-            finalOutputText += getSources(responseObj.sources);
-        }
-
-        return { type: "text", text: finalOutputText };
-    }
-
     async function submitUserMessage() {
+        if (!userInput || !sendBtn) return;
         const text = userInput.value.trim();
         if (!text) return;
-
-        const activeChat = chats.find(c => c.id === activeChatId);
-        if (!activeChat) return;
-
-        activeChat.messages.push({ role: 'user', text: text });
-        if (activeChat.title === "Новый чат" && activeChat.messages.length === 1) {
-            activeChat.title = text.length > 25 ? text.substring(0, 25) + '...' : text;
-        }
 
         userInput.value = '';
         userInput.style.height = '24px';
         updateSendButtonState();
+
+        const activeChat = chats.find(c => c.id === activeChatId);
+        if (!activeChat) return;
+
+        // Проверяем команды памяти
+        const memoryResult = handleMemoryCommands(text);
+        if (memoryResult) {
+            activeChat.messages.push({ sender: 'user', text: text });
+            activeChat.messages.push({ sender: 'ai', text: memoryResult });
+            if (activeChat.title === "Новый чат") {
+                activeChat.title = text.length > 25 ? text.substring(0, 25) + '...' : text;
+            }
+            saveChats();
+            renderChatList();
+            renderMessages();
+            return;
+        }
+
+        const { original, normalized } = understandQuery(text);
+
+        activeChat.messages.push({ sender: 'user', text: original });
+        if (activeChat.title === "Новый чат") {
+            activeChat.title = original.length > 25 ? original.substring(0, 25) + '...' : original;
+        }
         saveChats();
         renderChatList();
         renderMessages();
 
-        showTypingIndicator();
+        // Индикатор набора текста
+        const loadingId = 'loading_' + Date.now();
+        activeChat.messages.push({ sender: 'ai', text: '<div class="loading-dots"><span></span><span></span><span></span></div>', id: loadingId });
+        renderMessages();
 
-        try {
-            const result = await processMessage(text);
-            hideTypingIndicator();
+        const intent = detectIntent(normalized);
+        const answerObj = await generateAnswer(original, normalized, intent);
 
-            activeChat.messages.push({ role: 'ai', text: result.text });
-            saveChats();
-            renderMessages();
-        } catch (e) {
-            hideTypingIndicator();
-            activeChat.messages.push({ role: 'ai', text: "Произошла ошибка при обработке запроса. ⚠️" });
-            saveChats();
-            renderMessages();
+        let finalAnswerText = answerObj.text;
+        if (answerObj.sources && answerObj.sources.length > 0) {
+            finalAnswerText += getSources(answerObj.sources);
         }
-    }
 
-    // ========================================
-    // RENDERING & UI CORE
-    // ========================================
-    function renderChatList() {
-        if (!chatListContainer) return;
-        chatListContainer.innerHTML = '';
-        chats.forEach(chat => {
-            const item = document.createElement('div');
-            item.classList.add('chat-item');
-            if (chat.id === activeChatId) item.classList.add('active');
-            item.onclick = () => switchChat(chat.id);
-
-            const titleSpan = document.createElement('span');
-            titleSpan.classList.add('chat-title');
-            titleSpan.textContent = chat.title || "Чат";
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.classList.add('delete-chat-btn');
-            deleteBtn.textContent = '✕';
-            deleteBtn.onclick = (e) => deleteChat(e, chat.id);
-
-            item.appendChild(titleSpan);
-            item.appendChild(deleteBtn);
-            chatListContainer.appendChild(item);
-        });
-    }
-
-    function renderMessages() {
-        if (!chatContainer || !currentChatTitleElem) return;
-        chatContainer.innerHTML = '';
-        const activeChat = chats.find(c => c.id === activeChatId);
-        if (!activeChat) { currentChatTitleElem.textContent = "SENTRA"; return; }
-
-        currentChatTitleElem.textContent = activeChat.title || "SENTRA";
-
-        activeChat.messages.forEach(msg => {
-            const wrapper = document.createElement('div');
-            wrapper.classList.add('message-wrapper', msg.role);
-            const msgDiv = document.createElement('div');
-            msgDiv.classList.add('message', msg.role);
-
-            const messageData = msg.text;
-            const textContent = (typeof messageData === 'object' && messageData !== null) ? messageData.text : messageData;
-            msgDiv.innerHTML = textContent;
-
-            wrapper.appendChild(msgDiv);
-            chatContainer.appendChild(wrapper);
-        });
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    function showTypingIndicator() {
-        if (!chatContainer) return;
-        const wrapper = document.createElement('div');
-        wrapper.classList.add('message-wrapper', 'ai');
-        wrapper.id = 'typing-indicator';
-        wrapper.innerHTML = '<div class="message ai"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
-        chatContainer.appendChild(wrapper);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        if (sendBtn) sendBtn.disabled = true;
-    }
-
-    function hideTypingIndicator() {
-        const ind = document.getElementById('typing-indicator');
-        if (ind) ind.remove();
-        updateSendButtonState();
+        // Удаляем индикатор и добавляем реальный ответ
+        activeChat.messages = activeChat.messages.filter(m => m.id !== loadingId);
+        activeChat.messages.push({ sender: 'ai', text: finalAnswerText });
+        saveChats();
+        renderMessages();
     }
 </script>
 </body>
