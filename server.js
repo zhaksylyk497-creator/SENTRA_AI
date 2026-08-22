@@ -2,7 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 
 const app = express();
-const PORT = 3000;
+
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
 
 app.use(express.json());
 app.use(express.static('.'));
@@ -67,16 +69,9 @@ SENTRA_AI — это отдельный проект, разработанный
             }
         ];
 
-        // ========================================
-        // CONTEXT OF CURRENT CHAT
-        // ========================================
-
         if (Array.isArray(context)) {
             for (const item of context.slice(-10)) {
-
-                if (!item || !item.text) {
-                    continue;
-                }
+                if (!item || !item.text) continue;
 
                 let content = '';
 
@@ -86,9 +81,7 @@ SENTRA_AI — это отдельный проект, разработанный
                     content = item.text.text;
                 }
 
-                if (!content) {
-                    continue;
-                }
+                if (!content) continue;
 
                 messages.push({
                     role: item.role === 'user'
@@ -99,10 +92,6 @@ SENTRA_AI — это отдельный проект, разработанный
             }
         }
 
-        // ========================================
-        // CURRENT MESSAGE
-        // ========================================
-
         messages.push({
             role: 'user',
             content: message
@@ -111,10 +100,6 @@ SENTRA_AI — это отдельный проект, разработанный
         console.log('');
         console.log('📩 Сообщение:', message);
         console.log('🧠 Контекст:', context.length);
-
-        // ========================================
-        // GROQ
-        // ========================================
 
         const response = await fetch(
             'https://api.groq.com/openai/v1/chat/completions',
@@ -156,7 +141,6 @@ SENTRA_AI — это отдельный проект, разработанный
         });
 
     } catch (error) {
-
         console.error('❌ SERVER ERROR:', error);
 
         res.status(500).json({
@@ -169,17 +153,16 @@ SENTRA_AI — это отдельный проект, разработанный
 // START SERVER
 // ========================================
 
-app.listen(PORT, () => {
-
+app.listen(PORT, HOST, () => {
     console.log('');
     console.log('========================================');
     console.log('        🟣 SENTRA_AI ONLINE');
     console.log('========================================');
-    console.log(`🌐 http://localhost:${PORT}`);
-    console.log('🧠 AI Core: Groq');
-    console.log('💾 Context: ENABLED');
-    console.log('🤖 Identity: SENTRA_AI');
+    console.log(`🌐 PORT → ${PORT}`);
+    console.log('🌍 HOST → 0.0.0.0');
+    console.log('🧠 AI Core → Groq');
+    console.log('💾 Context → ENABLED');
+    console.log('🤖 Identity → SENTRA_AI');
     console.log('========================================');
     console.log('');
-
 });
