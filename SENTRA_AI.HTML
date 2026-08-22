@@ -251,7 +251,6 @@
             border-bottom-left-radius: 0.3rem;
         }
 
-        /* Стили для Markdown-разметки сообщений AI */
         .markdown-body {
             white-space: normal;
         }
@@ -310,6 +309,27 @@
             text-decoration: underline;
         }
 
+        .message-attachment-img {
+            max-width: 220px;
+            max-height: 220px;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            display: block;
+            object-fit: cover;
+        }
+
+        .message-file-card {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 0.55rem 0.8rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
         .windy-btn {
             display: inline-block;
             margin-top: 0.75rem;
@@ -325,25 +345,6 @@
 
         .windy-btn:hover {
             background-color: var(--accent-hover);
-        }
-
-        .sources-block {
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .sources-block a {
-            color: var(--accent-hover);
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 0.25rem;
-        }
-
-        .sources-block a:hover {
-            text-decoration: underline;
         }
 
         .input-container-wrapper {
@@ -369,6 +370,102 @@
 
         #input-area:focus-within {
             border-color: rgba(139, 92, 246, 0.4);
+        }
+
+        /* Кнопка «+» и анимированное выпадающее меню вложений */
+        .attachment-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .plus-btn {
+            width: 32px;
+            height: 32px;
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 0.35rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+            margin-bottom: 2px;
+        }
+
+        .plus-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-color);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Плавный поворот кнопки в крестик (×) */
+        .plus-btn.active {
+            transform: rotate(180deg);
+            color: var(--text-color);
+            border-color: rgba(139, 92, 246, 0.4);
+        }
+
+        @keyframes menuAppear {
+            from {
+                opacity: 0;
+                transform: translateY(8px) scale(0.97);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .attachment-menu {
+            display: none;
+            position: absolute;
+            bottom: 44px;
+            left: 0;
+            background-color: var(--chat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 0.35rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            min-width: 160px;
+            flex-direction: column;
+            gap: 0.2rem;
+            opacity: 0;
+            transform: translateY(8px) scale(0.97);
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .attachment-menu.open {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+            animation: menuAppear 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.6rem 0.75rem;
+            background: transparent;
+            border: none;
+            border-radius: 0.4rem;
+            color: var(--text-color);
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-align: left;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .attachment-item:hover {
+            background-color: rgba(255, 255, 255, 0.08);
         }
 
         textarea {
@@ -498,6 +595,20 @@
 
         <div class="input-container-wrapper">
             <div id="input-area">
+                <!-- Кнопка «+» и выпадающее меню -->
+                <div class="attachment-wrapper">
+                    <button class="plus-btn" id="plus-btn" title="Прикрепить файл или фото" onclick="toggleAttachmentMenu(event)">+</button>
+                    <div class="attachment-menu" id="attachment-menu">
+                        <button class="attachment-item" onclick="triggerFileInput('image/*')">📷 Фото</button>
+                        <button class="attachment-item" onclick="triggerFileInput('*/*')">📁 Файл</button>
+                        <button class="attachment-item" onclick="triggerCameraInput()">📸 Камера</button>
+                    </div>
+                </div>
+
+                <!-- Скрытые инпуты для загрузки файлов -->
+                <input type="file" id="hidden-file-input" style="display: none;" onchange="handleFileSelected(event)">
+                <input type="file" id="hidden-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleFileSelected(event)">
+
                 <textarea id="user-input" placeholder="Сообщение SENTRA..."></textarea>
                 <button id="send-btn" class="send-btn" onclick="submitUserMessage()" disabled>
                     <span class="arrow">↑</span>
@@ -510,8 +621,8 @@
         <div class="modal">
             <h2>Настройки SENTRA</h2>
             <div class="modal-content">
-                <div>Версия: 2.1.0 (Neural Core & Long-Term Memory)</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Интегрирована долговременная память на localStorage, а также провайдер askAI через защищенный backend/proxy.</div>
+                <div>Версия: 2.3.0 (Neural Core & Animated Attachments)</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Интегрирована долговременная память, плавная анимация вложений и интерфейс чатов.</div>
                 <div style="margin-top: 0.5rem; font-family: monospace; font-size: 0.75rem; color: rgba(161, 161, 170, 0.4); letter-spacing: 2px;">... . -. - .-. .-</div>
             </div>
             <button class="modal-btn" onclick="clearAllChats()">Очистить все чаты</button>
@@ -520,11 +631,65 @@
     </div>
 
 <script>
-    // Инициализация настроек парсера Markdown
     marked.setOptions({
         breaks: true,
         gfm: true
     });
+
+    // ========================================
+    // ATTACHMENTS & MEDIA MODULE (UI Handler)
+    // ========================================
+    let pendingAttachment = null;
+
+    function toggleAttachmentMenu(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('attachment-menu');
+        const plusBtn = document.getElementById('plus-btn');
+        if (menu && plusBtn) {
+            const isOpen = menu.classList.toggle('open');
+            plusBtn.classList.toggle('active', isOpen);
+            // Визуально превращаем «+» в «×» через спецсимвол при открытии
+            plusBtn.textContent = isOpen ? '×' : '+';
+        }
+    }
+
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('attachment-menu');
+        const plusBtn = document.getElementById('plus-btn');
+        if (menu && menu.classList.contains('open')) {
+            menu.classList.remove('open');
+            if (plusBtn) {
+                plusBtn.classList.remove('active');
+                plusBtn.textContent = '+';
+            }
+        }
+    });
+
+    function triggerFileInput(acceptType) {
+        const input = document.getElementById('hidden-file-input');
+        if (input) {
+            input.accept = acceptType;
+            input.click();
+        }
+    }
+
+    function triggerCameraInput() {
+        const input = document.getElementById('hidden-camera-input');
+        if (input) input.click();
+    }
+
+    function handleFileSelected(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        pendingAttachment = file;
+        const userInput = document.getElementById('user-input');
+        if (userInput) {
+            userInput.placeholder = `Прикреплено: ${file.name}`;
+            userInput.focus();
+        }
+        event.target.value = '';
+    }
 
     // ========================================
     // CHAT & STORAGE CORE
@@ -572,7 +737,7 @@
 
     function updateSendButtonState() {
         if (!sendBtn || !userInput) return;
-        sendBtn.disabled = userInput.value.trim().length === 0;
+        sendBtn.disabled = userInput.value.trim().length === 0 && !pendingAttachment;
     }
 
     function loadChats() {
@@ -637,7 +802,6 @@
         if (settingsModal) settingsModal.style.display = 'none';
     }
 
-    // Рендеринг списка чатов в боковой панели
     function renderChatList() {
         if (!chatListContainer) return;
         chatListContainer.innerHTML = '';
@@ -661,7 +825,6 @@
         });
     }
 
-    // Функция отрисовки сообщений с поддержкой Markdown для ИИ
     function renderMessages() {
         if (!chatContainer) return;
         chatContainer.innerHTML = '';
@@ -680,11 +843,38 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${msg.sender}`;
 
-            if (msg.sender === 'ai') {
-                const rawHtml = marked.parse(msg.text || '');
-                messageDiv.innerHTML = `<div class="markdown-body">${DOMPurify.sanitize(rawHtml)}</div>`;
-            } else {
-                messageDiv.textContent = msg.text;
+            if (msg.attachment) {
+                if (msg.attachment.url && msg.attachment.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = msg.attachment.url;
+                    img.className = 'message-attachment-img';
+                    messageDiv.appendChild(img);
+                } else {
+                    const fileCard = document.createElement('div');
+                    fileCard.className = 'message-file-card';
+                    fileCard.innerHTML = `
+                        <span>📁</span>
+                        <div>
+                            <div style="font-weight: 500;">${msg.attachment.name}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">${Math.round(msg.attachment.size / 1024)} KB</div>
+                        </div>
+                    `;
+                    messageDiv.appendChild(fileCard);
+                }
+            }
+
+            if (msg.text) {
+                if (msg.sender === 'ai') {
+                    const rawHtml = marked.parse(msg.text);
+                    const htmlContainer = document.createElement('div');
+                    htmlContainer.className = 'markdown-body';
+                    htmlContainer.innerHTML = DOMPurify.sanitize(rawHtml);
+                    messageDiv.appendChild(htmlContainer);
+                } else {
+                    const textSpan = document.createElement('div');
+                    textSpan.textContent = msg.text;
+                    messageDiv.appendChild(textSpan);
+                }
             }
 
             wrapper.appendChild(messageDiv);
@@ -763,7 +953,7 @@
             if (memory.length === 0) {
                 return "Я пока ничего не запомнила о тебе. Попроси меня: «Запомни, что меня зовут Алекс» или «Мой любимый цвет — синий».";
             }
-            return "Вот что я помни о тебе:\n" + memory.map(m => "— " + m).join("\n");
+            return "Вот что я помню о тебе:\n" + memory.map(m => "— " + m).join("\n");
         }
 
         if (lower.startsWith('забудь это') || lower.startsWith('забудь ')) {
@@ -910,7 +1100,6 @@
         const lower = text.toLowerCase().trim();
 
         if (lower.startsWith('/') || lower === 'очистить') return "command";
-        
         if (knowledgeBase[lower]) return "knowledge_base";
 
         if (lower.includes('кто тебя создал') || lower.includes('автор sentra')) return "creator";
@@ -1068,40 +1257,60 @@
     async function submitUserMessage() {
         if (!userInput || !sendBtn) return;
         const text = userInput.value.trim();
-        if (!text) return;
+        if (!text && !pendingAttachment) return;
+
+        const currentAttachment = pendingAttachment;
+        pendingAttachment = null;
 
         userInput.value = '';
         userInput.style.height = '24px';
+        userInput.placeholder = "Сообщение SENTRA...";
         updateSendButtonState();
 
         const activeChat = chats.find(c => c.id === activeChatId);
         if (!activeChat) return;
 
-        // Проверяем команды памяти
-        const memoryResult = handleMemoryCommands(text);
-        if (memoryResult) {
-            activeChat.messages.push({ sender: 'user', text: text });
-            activeChat.messages.push({ sender: 'ai', text: memoryResult });
-            if (activeChat.title === "Новый чат") {
-                activeChat.title = text.length > 25 ? text.substring(0, 25) + '...' : text;
+        if (text && !currentAttachment) {
+            const memoryResult = handleMemoryCommands(text);
+            if (memoryResult) {
+                activeChat.messages.push({ sender: 'user', text: text });
+                activeChat.messages.push({ sender: 'ai', text: memoryResult });
+                if (activeChat.title === "Новый чат") {
+                    activeChat.title = text.length > 25 ? text.substring(0, 25) + '...' : text;
+                }
+                saveChats();
+                renderChatList();
+                renderMessages();
+                return;
             }
-            saveChats();
-            renderChatList();
-            renderMessages();
-            return;
         }
 
-        const { original, normalized } = understandQuery(text);
+        const { original, normalized } = understandQuery(text || (currentAttachment ? `Файл: ${currentAttachment.name}` : ''));
 
-        activeChat.messages.push({ sender: 'user', text: original });
+        const userMessageObj = { 
+            sender: 'user', 
+            text: text 
+        };
+
+        if (currentAttachment) {
+            userMessageObj.attachment = {
+                name: currentAttachment.name,
+                type: currentAttachment.type,
+                size: currentAttachment.size,
+                url: currentAttachment.type.startsWith('image/') ? URL.createObjectURL(currentAttachment) : null
+            };
+        }
+
+        activeChat.messages.push(userMessageObj);
+        
+        const titleSource = text || (currentAttachment ? currentAttachment.name : "Чат");
         if (activeChat.title === "Новый чат") {
-            activeChat.title = original.length > 25 ? original.substring(0, 25) + '...' : original;
+            activeChat.title = titleSource.length > 25 ? titleSource.substring(0, 25) + '...' : titleSource;
         }
         saveChats();
         renderChatList();
         renderMessages();
 
-        // Индикатор набора текста
         const loadingId = 'loading_' + Date.now();
         activeChat.messages.push({ sender: 'ai', text: '<div class="loading-dots"><span></span><span></span><span></span></div>', id: loadingId });
         renderMessages();
@@ -1114,7 +1323,6 @@
             finalAnswerText += getSources(answerObj.sources);
         }
 
-        // Удаляем индикатор и добавляем реальный ответ
         activeChat.messages = activeChat.messages.filter(m => m.id !== loadingId);
         activeChat.messages.push({ sender: 'ai', text: finalAnswerText });
         saveChats();
